@@ -2,98 +2,124 @@ package com.baominh.sdp.exception;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
 
 public class BaseException extends RuntimeException {
 
 	private static final long serialVersionUID = -7030732749416640448L;
-	protected String message;
-	protected Integer httpStatus;
-	protected IErrorCode errorCode;
-	protected String traceMessage;
-	private List<BMFieldError> fieldErrors;
+	private static Logger logger = LoggerFactory.getLogger(BaseException.class);
+    protected String messageCode;
+    protected Object[] arguments;
+    protected Integer httpStatus;
+    protected IErrorCode errorCode;
+    protected String traceMessage;
+    private List<BMFieldError> fieldErrors = new ArrayList();
 
-	public BaseException() {
+    public BaseException() {
+    }
 
-		fieldErrors = new ArrayList<BMFieldError>();
-	}
+    public BaseException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	public String getMessage() {
-		return this.message;
-	}
+    public String getMessageCode() {
+        return this.messageCode;
+    }
 
-	public void setMessage(String message) {
-		this.message = message;
-	}
+    public void setMessageCode(String messageCode) {
+        this.messageCode = messageCode;
+    }
 
-	public Integer getHttpStatus() {
-		return httpStatus;
-	}
+    public Object[] getArguments() {
+        return this.arguments;
+    }
 
-	public void setHttpStatus(Integer httpStatus) {
-		this.httpStatus = httpStatus;
-	}
+    public void setArguments(Object[] arguments) {
+        this.arguments = arguments;
+    }
 
-	public IErrorCode getErrorCode() {
-		return errorCode;
-	}
+    public Integer getHttpStatus() {
+        return this.httpStatus;
+    }
 
-	public void setErrorCode(IErrorCode errorCode) {
-		this.errorCode = errorCode;
-	}
+    public void setHttpStatus(Integer httpStatus) {
+        this.httpStatus = httpStatus;
+    }
 
-	public String getTraceMessage() {
-		return traceMessage;
-	}
+    public IErrorCode getErrorCode() {
+        return this.errorCode;
+    }
 
-	public void setTraceMessage(String traceMessage) {
-		this.traceMessage = traceMessage;
-	}
+    public void setErrorCode(IErrorCode errorCode) {
+        this.errorCode = errorCode;
+    }
 
-	public List<BMFieldError> getFieldErrors() {
-		return fieldErrors;
-	}
+    public String getTraceMessage() {
+        return this.traceMessage;
+    }
 
-	public void setFieldErrors(List<BMFieldError> fieldErrors) {
-		this.fieldErrors = fieldErrors;
-	}
+    public void setTraceMessage(String traceMessage) {
+        this.traceMessage = traceMessage;
+    }
 
-	public List<BMFieldError> addFieldError(String fieldId, String errorCode, String errorMessage) {
+    public List<BMFieldError> getFieldErrors() {
+        return this.fieldErrors;
+    }
 
-		BMFieldError fieldError = new BMFieldError();
-		fieldError.setFieldId(fieldId);
-		fieldError.setErrorCode(errorCode);
-		fieldError.setErrorMessage(errorMessage);
+    public void setFieldErrors(List<BMFieldError> fieldErrors) {
+        this.fieldErrors = fieldErrors;
+    }
 
-		fieldErrors.add(fieldError);
+    public List<BMFieldError> addFieldError(String fieldId, String errorCode, String errorMessage) {
+        BMFieldError fieldError = new BMFieldError();
+        fieldError.setFieldId(fieldId);
+        fieldError.setErrorCode(errorCode);
+        fieldError.setErrorMessage(errorMessage);
+        this.fieldErrors.add(fieldError);
+        return this.fieldErrors;
+    }
 
-		return fieldErrors;
-	}
+    public List<BMFieldError> addFieldError(String fieldId, String errorCode, String errorMessage, Object[] errorMessageArgs) {
+        BMFieldError fieldError = new BMFieldError();
+        fieldError.setFieldId(fieldId);
+        fieldError.setErrorCode(errorCode);
+        fieldError.setErrorMessage(errorMessage);
+        fieldError.setErrorMessageArgs(errorMessageArgs);
+        this.fieldErrors.add(fieldError);
+        return this.fieldErrors;
+    }
 
-	public List<BMFieldError> addFieldError(String fieldId, String errorCode, String errorMessage,
-			Object[] errorMessageArgs) {
+    public BMRestError transformToRestError() {
+        BMRestError restError = new BMRestError();
+        restError.setCode(this.errorCode.getCode());
+        restError.setTraceMessage(this.traceMessage);
+        restError.setMessage(this.errorCode.getMessageCode());
+        restError.setFieldErrors(this.fieldErrors);
+        restError.setException(this.getClass().getName());
+        return restError;
+    }
 
-		BMFieldError fieldError = new BMFieldError();
-		fieldError.setFieldId(fieldId);
-		fieldError.setErrorCode(errorCode);
-		fieldError.setErrorMessage(errorMessage);
-		fieldError.setErrorMessageArgs(errorMessageArgs);
+    public BMRestError transformToRestError(MessageSource messageSource, Locale locale) {
+        BMRestError restError = new BMRestError();
+        restError.setCode(this.errorCode.getCode());
+        restError.setTraceMessage(this.traceMessage);
+        String messageCode = this.errorCode.getMessageCode();
 
-		fieldErrors.add(fieldError);
+        try {
+            String message = messageSource.getMessage(messageCode, this.arguments, locale);
+            restError.setMessage(message);
+        } catch (NoSuchMessageException var6) {
+            logger.warn(var6.getMessage());
+            restError.setMessage(messageCode);
+        }
 
-		return fieldErrors;
-	}
-
-	public BMRestError transformToRestError() {
-
-		BMRestError restError = new BMRestError();
-
-		restError.setErrorCode(errorCode.getErrorCode());
-		restError.setTraceMessage(traceMessage);
-
-		restError.setMessage(errorCode.getMessageCode());
-		restError.setFieldErrors(fieldErrors);
-		restError.setException(this.getClass().getName());
-		return restError;
-	}
+        restError.setFieldErrors(this.fieldErrors);
+        restError.setException(this.getClass().getName());
+        return restError;
+    }
 
 }

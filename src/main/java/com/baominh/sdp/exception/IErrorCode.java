@@ -1,7 +1,7 @@
 package com.baominh.sdp.exception;
 public interface IErrorCode {
 	
-	String  getErrorCode();
+	String getCode();
 	String  getMessageCode();
 	Integer  getHttpStatus();
 }

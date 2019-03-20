@@ -6,9 +6,14 @@ package com.baominh.sdp.service.impl;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+
+import javax.transaction.Transactional;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -21,11 +26,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.baominh.sdp.dto.ContentDto;
 import com.baominh.sdp.dto.MTRequestDto;
 import com.baominh.sdp.dto.MTResponseDto;
+import com.baominh.sdp.dto.ServiceDto;
+import com.baominh.sdp.dto.SmsuserDto;
+import com.baominh.sdp.entity.ServiceEntity;
+import com.baominh.sdp.entity.Smslog;
 import com.baominh.sdp.exception.BMException;
 import com.baominh.sdp.exception.ErrorCode;
 import com.baominh.sdp.repository.jpa.ServiceRepository;
+import com.baominh.sdp.repository.jpa.SmslogRepository;
+import com.baominh.sdp.repository.jpa.SmsuserRepository;
 import com.baominh.sdp.service.VNMSDPService;
 import com.baominh.sdp.utils.LoggingUtils;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -48,6 +60,9 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 	@Value("${sdp.password}")
 	private String password;
 
+	@Value("${sdp.shortcode}")
+	private String serviceAddress;
+
 	@Value("${sdp.mtapi.url}")
 	private String sdpurl;
 
@@ -56,6 +71,12 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 
 	@Autowired
 	private ServiceRepository serviceRepository;
+
+	@Autowired
+	private SmsuserRepository smsUserRepository;
+
+	@Autowired
+	private SmslogRepository smsLogRepository;
 
 	@Override
 	public MTResponseDto sendSDPMT(MTRequestDto mtRequest) {
@@ -90,22 +111,52 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 			mtResp = mapper.readValue(result.toString(), MTResponseDto.class);
 
 		} catch (JsonParseException e) {
-			throw new BMException(ErrorCode.SEND_MT_ERROR,
+			throw new BMException(e, ErrorCode.SEND_MT_ERROR,
 					new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
 							.append(" trace message.").append(e.getMessage()));
 		} catch (JsonMappingException e) {
-			throw new BMException(ErrorCode.SEND_MT_ERROR,
+			throw new BMException(e, ErrorCode.SEND_MT_ERROR,
 					new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
 							.append(" trace message.").append(e.getMessage()));
 		} catch (IOException e) {
-			throw new BMException(ErrorCode.SEND_MT_ERROR,
+			throw new BMException(e, ErrorCode.SEND_MT_ERROR,
 					new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
 							.append(" trace message.").append(e.getMessage()));
 		}
 
 		return mtResp;
 	}
-	
-	
+
+	@Override
+	@Transactional
+	public boolean sendSMS(ContentDto contentDto, SmsuserDto smsUserDto) {
+		log.info("Send SMS: {}", LoggingUtils.objToStringIgnoreEx(contentDto));
+		SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
+
+		ServiceEntity service = serviceRepository.findById(contentDto.getServiceID()).orElse(null);
+
+		if (service != null) {
+			log.info("Send SMS: {}, Content: {}", smsUserDto.getPhone(), contentDto.getContent());
+			String transId = sdf.format(new Date());
+			MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
+					.time(sdf.format(new Date())).isdn(smsUserDto.getPhone()).serviceAddress(serviceAddress)
+					.categoryId(service.getSdpCategoryId().toString()).productId(service.getSdpProductId().toString())
+					.moid("0").message(contentDto.getContent()).unicode(1).flash(0).href("").build();
+			
+			MTResponseDto resp = sendSDPMT(mtReq);
+			
+			if(resp.getStatus() == 0) {
+//				Smslog smslog = Smslog.builder().content(contentDto.getContent()).
+			} else {
+				
+			}
+
+		} else {
+			log.info("ServiceId {} not exist!!", contentDto.getServiceID());
+			return false;
+		}
+
+		return false;
+	}
 
 }

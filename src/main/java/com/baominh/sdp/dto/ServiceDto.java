@@ -56,6 +56,5 @@ public class ServiceDto {
 
 	private Integer sdpProductId;
 
-	@Column(name = "sdp_category_id")
 	private Integer sdpCategoryId;
 }

@@ -81,6 +81,11 @@ public enum CoreErrorCode implements IErrorCode {
 	public void setHttpStatus(Integer httpStatus) {
 		this.httpStatus = httpStatus;
 	}
+	@Override
+	public String getCode() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 
 }

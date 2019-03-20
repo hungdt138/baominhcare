@@ -38,7 +38,7 @@ public class BMRestTemplateErrorHandler implements ResponseErrorHandler{
 			throw new BMException(restError, httpStatus);
 		} catch (IOException e) {
 			logger.error(e.getMessage(),e);
-			throw new BMException(CoreErrorCode.UNKNOWN_ERROR,response.getRawStatusCode(), e.getMessage());
+			throw new BMException(e, CoreErrorCode.UNKNOWN_ERROR,response.getRawStatusCode(), e.getMessage());
 		}
 	}
 

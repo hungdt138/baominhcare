@@ -39,36 +39,33 @@ public enum ErrorCode implements IErrorCode {
 
 	static {
 		for (ErrorCode e : EnumSet.allOf(ErrorCode.class))
-			lookup.put(e.getErrorCode(), e);
+			lookup.put(e.getCode(), e);
 	}
 
-	private String errorCode;
+	private String code;
 
 	private String messageCode;
 	private Integer httpStatus;
 
 	ErrorCode(String errorCode, String messageCode) {
-		this.errorCode = errorCode;
+		this.code = errorCode;
 		this.messageCode = messageCode;
 		this.httpStatus = HttpServletResponse.SC_BAD_REQUEST;
 	}
 
 	ErrorCode(String errorCode, String messageCode, Integer httpStatus) {
-		this.errorCode = errorCode;
+		this.code = errorCode;
 		this.messageCode = messageCode;
 		this.httpStatus = httpStatus;
 	}
 
-	public String getErrorCode() {
-		return this.errorCode;
-	}
-
+	
 	public static ErrorCode get(String errorCode) {
 		return lookup.get(errorCode);
 	}
 
-	public void setErrorCode(String errorCode) {
-		this.errorCode = errorCode;
+	public void setCode(String errorCode) {
+		this.code = errorCode;
 	}
 
 	public String getMessageCode() {
@@ -85,6 +82,11 @@ public enum ErrorCode implements IErrorCode {
 
 	public void setHttpStatus(Integer httpStatus) {
 		this.httpStatus = httpStatus;
+	}
+
+	@Override
+	public String getCode() {
+		return this.code;
 	}
 
 }
