@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<contextName>sdp-vas</contextName>
+	<!-- <property name="LOG_PATH" value="C:\\var\\log" /> -->
+ 	<property name="LOG_PATH" value="/var/log" />
+	<property name="APP_DIR" value="sdp-vas" />
+	<property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c:%L - %m%n" />
+
+	<appender name="CONSOLE"
+		class="ch.qos.logback.core.ConsoleAppender">
+		<layout class="ch.qos.logback.classic.PatternLayout">
+			<Pattern>${LOG_PATTERN}</Pattern>
+		</layout>
+	</appender>
+
+	<appender name="FILEERROR"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_PATH}/${APP_DIR}/sdp-vas-error.log</file>
+		<rollingPolicy
+			class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/${APP_DIR}/sdp-vas-error-%d{yyyy-MM-dd}-%i.log
+			</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy
+				class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy>
+		<append>true</append>
+		<encoder
+			class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>${LOG_PATTERN}</pattern>
+			<charset>utf-8</charset>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>error</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+
+	<appender name="FILEWARN"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_PATH}/${APP_DIR}/sdp-vas-warn.log</file>
+		<rollingPolicy
+			class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/${APP_DIR}/sdp-vas-warn-%d{yyyy-MM-dd}-%i.log
+			</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy
+				class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy>
+		<append>true</append>
+		<encoder
+			class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>${LOG_PATTERN}</pattern>
+			<charset>utf-8</charset>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>warn</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+
+	<appender name="FILEINFO"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_PATH}/${APP_DIR}/sdp-vas-info.log</file>
+		<rollingPolicy
+			class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/${APP_DIR}/sdp-vas-info-%d{yyyy-MM-dd}-%i.log
+			</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy
+				class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy>
+		<append>true</append>
+		<encoder
+			class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>${LOG_PATTERN}</pattern>
+			<charset>utf-8</charset>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>info</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+
+	<appender name="FILEDEBUG"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_PATH}/${APP_DIR}/sdp-vas-debug.log</file>
+		<rollingPolicy
+			class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/${APP_DIR}/sdp-vas-debug-%d{yyyy-MM-dd}-%i.log
+			</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy
+				class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy>
+		<append>true</append>
+		<encoder
+			class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>${LOG_PATTERN}</pattern>
+			<charset>utf-8</charset>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>DEBUG</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+
+	<logger name="com.tcbs" level="debug" />
+	<logger name="org.springframework" level="WARN" />
+
+	<root level="INFO">
+		<appender-ref ref="FILEERROR" />
+		<appender-ref ref="FILEWARN" />
+		<appender-ref ref="FILEINFO" />
+		<appender-ref ref="FILEDEBUG" />
+		<appender-ref ref="CONSOLE" />
+	</root>
+</configuration>
