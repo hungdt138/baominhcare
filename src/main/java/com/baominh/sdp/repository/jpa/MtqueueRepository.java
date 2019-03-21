@@ -14,6 +14,5 @@ public interface MtqueueRepository extends JpaRepository<Mtqueue, Integer> {
     @Query(value = "select * from mtqueue where status = 1", nativeQuery = true)
     List<Mtqueue> getAllContentInQueue();
 
-    @Query(value = "select * from mtqueue where serviceid = :serviceId status = 1", nativeQuery = true)
-    List<Mtqueue> getAllContentInQueueByServiceId(@Param("serviceId") Integer serviceId);
+    
 }

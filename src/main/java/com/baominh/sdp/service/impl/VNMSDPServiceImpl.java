@@ -19,11 +19,14 @@ import com.baominh.sdp.common.Constants;
 import com.baominh.sdp.entity.*;
 import com.baominh.sdp.repository.jpa.*;
 import com.baominh.sdp.utils.DateHelper;
+
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.springframework.beans.BeanUtils;
@@ -54,260 +57,278 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class VNMSDPServiceImpl implements VNMSDPService {
 
-    @Value("${sdp.username}")
-    private String username;
+	@Value("${sdp.username}")
+	private String username;
 
-    @Value("${sdp.password}")
-    private String password;
+	@Value("${sdp.password}")
+	private String password;
 
-    @Value("${sdp.shortcode}")
-    private String serviceAddress;
+	@Value("${sdp.shortcode}")
+	private String serviceAddress;
 
-    @Value("${sdp.mtapi.url}")
-    private String sdpurl;
+	@Value("${sdp.mtapi.url}")
+	private String sdpurl;
 
-    @Autowired
-    private ObjectMapper mapper;
+	@Autowired
+	private ObjectMapper mapper;
 
-    @Autowired
-    private ServiceRepository serviceRepository;
+	@Autowired
+	private ServiceRepository serviceRepository;
 
-    @Autowired
-    private SmsuserRepository smsUserRepository;
+	@Autowired
+	private SmsuserRepository smsUserRepository;
 
-    @Autowired
-    private SmslogRepository smsLogRepository;
+	@Autowired
+	private SmslogRepository smsLogRepository;
 
-    @Autowired
-    private ContentRepository contentRepository;
+	@Autowired
+	private ContentRepository contentRepository;
 
-    @Autowired
-    private MtqueueRepository mtqueueRepository;
+	@Autowired
+	private MtqueueRepository mtqueueRepository;
 
-    @Autowired
-    private ScheduleRepository scheduleRepository;
+	@Autowired
+	private ScheduleRepository scheduleRepository;
 
-    @Autowired
-    private SchedulelistRepository schedulelistRepository;
+	@Autowired
+	private SchedulelistRepository schedulelistRepository;
 
-    @Override
-    public MTResponseDto sendSDPMT(MTRequestDto mtRequest) {
-        log.info("Call send mt api: {}", sdpurl);
-        log.info("Data: ", mtRequest.toHashMap().toString());
-        List<NameValuePair> requestParams = new ArrayList<>();
-        MTResponseDto mtResp = null;
+	@Override
+	public MTResponseDto sendSDPMT(MTRequestDto mtRequest) {
+		log.info("Call send mt api: {}", sdpurl);
+		MTResponseDto mtResp = null;
 
-        for (Map.Entry<String, String> entry : mtRequest.toHashMap().entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-            requestParams.add(new BasicNameValuePair(key, value));
-        }
+		HttpClient client = HttpClientBuilder.create().build();
 
-        HttpClient client = HttpClientBuilder.create().build();
-        try {
-            HttpPost post = new HttpPost(sdpurl);
-            post.setEntity(new UrlEncodedFormEntity(requestParams));
-            HttpResponse response = client.execute(post);
-            BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+		String request = LoggingUtils.objToStringIgnoreEx(mtRequest);
 
-            StringBuffer result = new StringBuffer();
-            String line = "";
-            while ((line = rd.readLine()) != null) {
-                result.append(line);
-            }
+		try {
+			StringEntity entity = new StringEntity(request);
+			log.info("Data Request: {}", LoggingUtils.objToStringIgnoreEx(mtRequest));
+			HttpPost post = new HttpPost(sdpurl);
+			post.setEntity(entity);
+			post.addHeader("Content-Type", "application/json");
+			HttpResponse response = client.execute(post);
+			BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
 
-            log.info("Return data:{}", result.toString());
+			StringBuffer result = new StringBuffer();
+			String line = "";
+			while ((line = rd.readLine()) != null) {
+				result.append(line);
+			}
 
-            mapper = new ObjectMapper();
+			log.info("Return data:{}", result.toString());
 
-            mtResp = mapper.readValue(result.toString(), MTResponseDto.class);
+			mapper = new ObjectMapper();
 
-        } catch (JsonParseException e) {
-            throw new BMException(e, ErrorCode.SEND_MT_ERROR,
-                    new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
-                            .append(" trace message.").append(e.getMessage()));
-        } catch (JsonMappingException e) {
-            throw new BMException(e, ErrorCode.SEND_MT_ERROR,
-                    new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
-                            .append(" trace message.").append(e.getMessage()));
-        } catch (IOException e) {
-            throw new BMException(e, ErrorCode.SEND_MT_ERROR,
-                    new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
-                            .append(" trace message.").append(e.getMessage()));
-        }
+			mtResp = mapper.readValue(result.toString(), MTResponseDto.class);
 
-        return mtResp;
-    }
+		} catch (JsonParseException e) {
+			throw new BMException(e, ErrorCode.SEND_MT_ERROR,
+					new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
+							.append(" trace message.").append(e.getMessage()));
+		} catch (JsonMappingException e) {
+			throw new BMException(e, ErrorCode.SEND_MT_ERROR,
+					new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
+							.append(" trace message.").append(e.getMessage()));
+		} catch (IOException e) {
+			throw new BMException(e, ErrorCode.SEND_MT_ERROR,
+					new StringBuilder(" parameter: ").append(LoggingUtils.objToStringIgnoreEx(mtRequest))
+							.append(" trace message.").append(e.getMessage()));
+		}
 
-    @Override
-    @Transactional
-    public boolean sendSMS(String isdn, Integer serviceId) {
-        log.info("Entering to send SMS SDP");
-        SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
+		return mtResp;
+	}
 
-        ServiceEntity service = serviceRepository.findById(serviceId).orElse(null);
-        Content content = contentRepository.getLatestContentByServiceId(serviceId);
-        ContentDto contentDto = new ContentDto();
-        BeanUtils.copyProperties(content, contentDto);
+	@Override
+	@Transactional
+	public boolean sendSMS(String isdn, Integer serviceId, String moId, String content, Integer productId,
+			String serviceAddress) {
+		log.info("Entering to send SMS SDP");
+		SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
 
-        log.info("Send SMS: {}", LoggingUtils.objToStringIgnoreEx(contentDto));
-        if (service != null) {
-            if (content != null) {
-                log.info("Send SMS: {}, Content: {}", isdn, contentDto.getContent());
-                String transId = sdf.format(new Date());
-                MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
-                        .time(sdf.format(new Date())).isdn(isdn).serviceAddress(serviceAddress)
-                        .categoryId(service.getSdpCategoryId().toString()).productId(service.getSdpProductId().toString())
-                        .moid("0").message(contentDto.getContent()).unicode(1).flash(0).href("").build();
+		ServiceEntity service = serviceRepository.findById(serviceId).orElse(null);
 
-                MTResponseDto resp = sendSDPMT(mtReq);
-                Smslog smslog = Smslog.builder().content(contentDto.getContent()).date(DateHelper.dateToUnixTime(new Date())).from(serviceAddress).to(isdn).retryNumber(0)
-                        .serviceID(contentDto.getServiceID()).type(Constants.SMS_TYPE.MT).build();
-                if (resp.getStatus() == 0) {
-                    smslog.setStatus("success");
-                } else {
-                    smslog.setStatus("fail");
-                }
+		if (service != null) {
+			if (content != null) {
+				log.info("Send SMS: {}, serviceAddress: {}, Content: {}", isdn, serviceAddress, content);
+				String transId = sdf.format(new Date());
+				MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
+						.time(sdf.format(new Date())).isdn(isdn).serviceAddress(serviceAddress)
+						.categoryId(service.getSdpCategoryId().toString())
+						.productId(service.getSdpProductId().toString()).moid(moId).message(content).unicode(1).flash(0)
+						.href("").build();
 
-                smsLogRepository.save(smslog);
-                return true;
-            } else {
-                log.info("No content setup for this service {} - {}!!!!", serviceId, service.getName());
-                return false;
-            }
+				MTResponseDto resp = sendSDPMT(mtReq);
+				Smslog smslog = Smslog.builder().content(content).date(DateHelper.dateToUnixTime(new Date()))
+						.from(serviceAddress).to("+" + isdn).retryNumber(0).serviceID(serviceId)
+						.type(Constants.SMS_TYPE.MT).build();
+				if (resp.getStatus() == 0) {
+					smslog.setStatus("success");
+				} else {
+					smslog.setStatus("fail");
+				}
 
-        } else {
-            log.info("ServiceId {} not exist!!", contentDto.getServiceID());
-            return false;
-        }
-    }
+				log.info("Insert log: {}", LoggingUtils.objToStringIgnoreEx(smslog));
 
-    @Override
-    @Transactional
-    public void sendSMSDaily(Integer serviceId) {
-        log.info("Start send MT daily...");
-        //Get All content
-        List<Mtqueue> lstContent = mtqueueRepository.getAllContentInQueueByServiceId(serviceId);
-        SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
-        ServiceEntity service = serviceRepository.findById(serviceId).orElse(null);
-        Integer i = 0;
-        if (service != null) {
-            if (lstContent.size() > 0) {
-                for (Mtqueue content : lstContent) {
-                    Smsuser smsuser = smsUserRepository.getSubscriberByIsdn(service.getId(), "+" + content.getIsdn());
-                    if (smsuser != null) {
-                        String transId = sdf.format(new Date()) + i;
-                        MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
-                                .time(sdf.format(new Date())).isdn(content.getIsdn()).serviceAddress(serviceAddress)
-                                .categoryId(service.getSdpCategoryId().toString()).productId(service.getSdpProductId().toString())
-                                .moid("0").message(content.getContent()).unicode(1).flash(0).href("").build();
+				smsLogRepository.save(smslog);
+				return true;
+			} else {
+				log.info("No content setup for this service {} - {}!!!!", serviceId, service.getName());
+				return false;
+			}
 
-                        log.info("{} --> Send SMS Request - {} ", transId, LoggingUtils.objToStringIgnoreEx(mtReq));
-                        MTResponseDto resp = sendSDPMT(mtReq);
-                        log.info("{} --> Send SMS Response - {} ", transId, LoggingUtils.objToStringIgnoreEx(resp));
-                        Smslog smslog = Smslog.builder().content(content.getContent()).date(DateHelper.dateToUnixTime(new Date())).from(serviceAddress).to(content.getIsdn()).retryNumber(0)
-                                .serviceID(content.getServiceId()).type(Constants.SMS_TYPE.MT).build();
-                        if (resp.getStatus() == 0) {
-                            smslog.setStatus("success");
-                            content.setStatus(0);
-                            mtqueueRepository.save(content);
-                        } else {
-                            smslog.setStatus("fail");
-                        }
+		} else {
+			log.info("ServiceId {} not exist!!", serviceId);
+			return false;
+		}
+	}
 
-                        smsLogRepository.save(smslog);
-                    } else {
-                        log.info("Subscriber does not exist or inactive.");
-                    }
+	@Override
+	@Transactional
+	public void sendSMSDaily() {
+		log.info("Start send MT daily...");
+		// Get All content
+		List<Mtqueue> lstContent = mtqueueRepository.getAllContentInQueue();
+		SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
+		Integer i = 0;
 
+		if (lstContent.size() > 0) {
+			for (Mtqueue content : lstContent) {
+				ServiceEntity service = serviceRepository.findById(content.getServiceId()).orElse(null);
+				Smsuser smsuser = smsUserRepository.getSubscriberByIsdn(service.getId(), content.getIsdn());
+				if (smsuser != null) {
+					String transId = sdf.format(new Date()) + i;
+					MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
+							.time(sdf.format(new Date())).isdn(content.getIsdn()).serviceAddress(serviceAddress)
+							.categoryId(service.getSdpCategoryId().toString())
+							.productId(service.getSdpProductId().toString()).moid("0").message(content.getContent())
+							.unicode(1).flash(0).href("").build();
 
-                    i++;
-                }
-            } else {
-                service.setWaitForContent(1);
-                serviceRepository.save(service);
-            }
+					log.info("{} --> Send SMS Request - {} ", transId, LoggingUtils.objToStringIgnoreEx(mtReq));
+					MTResponseDto resp = sendSDPMT(mtReq);
+					log.info("{} --> Send SMS Response - {} ", transId, LoggingUtils.objToStringIgnoreEx(resp));
+					Smslog smslog = Smslog.builder().content(content.getContent())
+							.date(DateHelper.dateToUnixTime(new Date())).from(serviceAddress).to(content.getIsdn())
+							.retryNumber(0).serviceID(content.getServiceId()).type(Constants.SMS_TYPE.MT).build();
+					if (resp.getStatus() == 0) {
+						smslog.setStatus("success");
+						content.setStatus(0);
+						mtqueueRepository.save(content);
+					} else {
+						smslog.setStatus("fail");
+					}
 
-        } else {
-            log.info("Service is not active.");
-        }
+					smsLogRepository.save(smslog);
+				} else {
+					log.info("Subscriber does not exist or inactive.");
+				}
 
+				i++;
+			}
+		} else {
+			log.info("No content for send.");
 
-    }
+		}
 
-    @Override
-    @Transactional
-    public void getContentDaily() {
-        log.info("Get Content Daily");
+	}
 
-        //Lay danh sach Service -> content -> save to queue
-        List<ServiceEntity> serviceEntityList = serviceRepository.getServiceEntityByEnable();
+	@Override
+	@Transactional
+	public void getContentDaily(Integer serviceId) {
+		log.info("Get Content Daily");
 
-        List<Mtqueue> lstQueue = new ArrayList<>();
-        for (ServiceEntity service : serviceEntityList) {
-            Content content = contentRepository.getContentByServiceId(service.getId());
-            Smsuser user = smsUserRepository.getSubsriberByServiceId(service.getId());
-            Mtqueue mtqueue = Mtqueue.builder().isdn(user.getPhone()).serviceAddress(serviceAddress).content(content.getContent()).serviceId(service.getId())
-                    .description("MT Daily").createdDate(new Date()).status(1).build();
-            lstQueue.add(mtqueue);
-        }
+		List<Mtqueue> lstQueue = new ArrayList<>();
 
-        log.info("Insert {} record MT to Database.", lstQueue.size());
+		Content content = contentRepository.getContentByServiceId(serviceId);
+		if (content != null) {
+			List<Smsuser> lstUser = smsUserRepository.getSubsriberByServiceId(serviceId);
+			log.info("lstUser: {}", LoggingUtils.objToStringIgnoreEx(lstUser));
+			for (Smsuser user : lstUser) {
+				Mtqueue mtqueue = Mtqueue.builder().isdn(user.getPhone()).serviceAddress(serviceAddress)
+						.content(content.getContent()).serviceId(serviceId).description("MT Daily")
+						.createdDate(new Date()).status(1).build();
+				lstQueue.add(mtqueue);
+			}
 
-        if (lstQueue.size() > 0) {
-            mtqueueRepository.saveAll(lstQueue);
-        }
+		} else {
+			log.info("No content set for service: {}.", serviceId);
+		}
 
-        for (ServiceEntity service : serviceEntityList) {
-            Content content = contentRepository.getContentByServiceId(service.getId());
-            content.setIsSend(1);
-            contentRepository.save(content);
-        }
+		log.info("Insert {} record MT to Database.", lstQueue.size());
 
-    }
+		log.info("lstQueue: {}", LoggingUtils.objToStringIgnoreEx(lstQueue));
 
-    @Override
-    public void prepareForSendMT() {
-        log.info("Prepare to sendMT");
+		if (lstQueue.size() > 0) {
+			mtqueueRepository.saveAll(lstQueue);
+		}
+		if (content != null) {
+			content.setIsSend(1);
+			contentRepository.save(content);
+		}
 
-        List<ServiceEntity> lstService = serviceRepository.getServiceEntityByEnable();
+	}
 
-        for (ServiceEntity service : lstService) {
-            List<Schedulelist> lstSchedulelist = schedulelistRepository.getAllScheduleListByServiceId(service.getId());
-            for (Integer i = 0; i < lstSchedulelist.size(); i++) {
-                Schedule schedule = scheduleRepository.findById(lstSchedulelist.get(i).getScheduleID()).orElse(null);
-                if(schedule != null) {
-                    Calendar calendarNow = Calendar.getInstance();
-                    calendarNow.setTime(new Date());
-                    Integer hh = calendarNow.get(Calendar.HOUR_OF_DAY);
-                    Integer mm = calendarNow.get(Calendar.MINUTE);
-                    Integer day = calendarNow.get(Calendar.DAY_OF_WEEK) + 1;// 0 = monday -> 6 = sunday
-                    Integer week =  calendarNow.get(Calendar.WEEK_OF_MONTH);
-                    Integer hhDb = Integer.parseInt(schedule.getHour().split(":")[0]);
-                    Integer mmDb = Integer.parseInt(schedule.getHour().split(":")[1]);
-                    if(schedule.getHour() != null && schedule.getDay() == null && schedule.getWeek() == null) {
+	@Override
+	public void prepareForSendMT() {
+		log.info("Prepare to sendMT");
 
-                        if(hh.intValue() == hhDb.intValue() && mm.intValue() == mmDb.intValue()) {
-                            sendSMSDaily(service.getId());
-                        }
-                    } else if (schedule.getHour() != null && schedule.getDay() != null && schedule.getWeek() == null) {
-                        if(hhDb.intValue() == hh.intValue() && mm.intValue() == mmDb.intValue() && day.intValue() == schedule.getDay() ) {
-                            sendSMSDaily(service.getId());
-                        }
-                    } else if (schedule.getHour() != null && schedule.getDay() != null && schedule.getWeek() != null) {
-                        if(hhDb.intValue() == hh.intValue() && mm.intValue() == mmDb.intValue() && day.intValue() == schedule.getDay().intValue() && week.intValue() == schedule.getWeek().intValue()) {
-                            sendSMSDaily(service.getId());
-                        }
-                    } else {
-                        log.info("No schedule for this service -> {}", service.getId());
-                    }
+		List<ServiceEntity> lstService = serviceRepository.getServiceEntityByEnable();
 
+		for (ServiceEntity service : lstService) {
+			List<Schedulelist> lstSchedulelist = schedulelistRepository.getAllScheduleListByServiceId(service.getId());
+			if (lstSchedulelist.size() > 0) {
 
-                } else {
-                    log.info("No schedule {}", service.getId());
-                }
-            }
-        }
-    }
+				for (Integer i = 0; i < lstSchedulelist.size(); i++) {
+
+					Schedule schedule = scheduleRepository.findById(lstSchedulelist.get(i).getScheduleID())
+							.orElse(null);
+					if (schedule != null) {
+						Calendar calendarNow = Calendar.getInstance();
+						calendarNow.setTime(new Date());
+						Integer hh = calendarNow.get(Calendar.HOUR_OF_DAY);
+						Integer mm = calendarNow.get(Calendar.MINUTE);
+						Integer day = calendarNow.get(Calendar.DAY_OF_WEEK) + 1;// 0 = monday -> 6 = sunday
+						Integer week = calendarNow.get(Calendar.WEEK_OF_MONTH);
+						Integer hhDb = Integer.parseInt(schedule.getHour().split(":")[0]);
+						Integer mmDb = Integer.parseInt(schedule.getHour().split(":")[1]);
+						if (schedule.getHour() != null && schedule.getDay() == null && schedule.getWeek() == null) {
+
+							if (hh.intValue() == hhDb.intValue() && mm.intValue() == mmDb.intValue()) {
+								getContentDaily(service.getId());
+							} else {
+								log.info("Waiting to send MT... {} - {}", service.getId(), service.getSyntaxRegister());
+							}
+						} else if (schedule.getHour() != null && schedule.getDay() != null
+								&& schedule.getWeek() == null) {
+							if (hhDb.intValue() == hh.intValue() && mm.intValue() == mmDb.intValue()
+									&& day.intValue() == schedule.getDay()) {
+								getContentDaily(service.getId());
+							} else {
+								log.info("Waiting to send MT...{} - {}\",service.getId(), service.getSyntaxRegister()");
+							}
+						} else if (schedule.getHour() != null && schedule.getDay() != null
+								&& schedule.getWeek() != null) {
+							if (hhDb.intValue() == hh.intValue() && mm.intValue() == mmDb.intValue()
+									&& day.intValue() == schedule.getDay().intValue()
+									&& week.intValue() == schedule.getWeek().intValue()) {
+								getContentDaily(service.getId());
+							} else {
+								log.info("Waiting to send MT...{} - {}\",service.getId(), service.getSyntaxRegister()");
+							}
+						} else {
+							log.info("No schedule for this service -> {}", service.getId());
+						}
+
+					} else {
+						log.info("No schedule {}", service.getId());
+					}
+				}
+			} else {
+				log.info("No schedule {} - {}", service.getId(), service.getSyntaxRegister());
+			}
+
+		}
+	}
 
 }

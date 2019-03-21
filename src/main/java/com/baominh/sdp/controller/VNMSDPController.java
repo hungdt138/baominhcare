@@ -7,14 +7,21 @@ import javax.ws.rs.PathParam;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.baominh.sdp.common.Constants;
 import com.baominh.sdp.dto.MORequestDto;
 import com.baominh.sdp.dto.ResponseDto;
 import com.baominh.sdp.dto.SubscriberRequestDto;
+import com.baominh.sdp.entity.ServiceEntity;
+import com.baominh.sdp.repository.jpa.ServiceRepository;
+import com.baominh.sdp.service.SubscriberService;
+import com.baominh.sdp.service.VNMSDPService;
+import com.baominh.sdp.service.impl.SubscriberServiceImpl;
 import com.baominh.sdp.utils.LoggingUtils;
 
 /**
@@ -25,6 +32,15 @@ import com.baominh.sdp.utils.LoggingUtils;
 @RequestMapping("/api/vnm")
 public class VNMSDPController {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	
+	@Autowired
+	private SubscriberService subscriberService;
+	
+	@Autowired
+	private VNMSDPService vnmSdpService;
+	
+	@Autowired
+	private ServiceRepository serviceRepository;
 
 	@RequestMapping(value = "/status", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_UTF8_VALUE })
 	public ResponseDto checkStatus() {
@@ -46,6 +62,17 @@ public class VNMSDPController {
 		.command(command).amount(amount).expiration(expiration).hash(hash).build();
 		
 		logger.info("SDP Request: {}", LoggingUtils.objToStringIgnoreEx(subRequest));
+		
+		if(subRequest.getCommand().equalsIgnoreCase(Constants.SDP_COMMAND.REGISTER)) {
+			subscriberService.register(subRequest.getIsdn(), Integer.valueOf(subRequest.getProductid()));
+			ServiceEntity service = serviceRepository.getServiceBySdpProductId(Integer.valueOf(subRequest.getProductid()));
+			
+			vnmSdpService.sendSMS(subRequest.getIsdn(), service.getId());
+		} else if (subRequest.getCommand().equalsIgnoreCase(Constants.SDP_COMMAND.SUBSCRIPTION)) {
+			subscriberService.subscription(subRequest);
+		} else { //unregister or cancel
+			subscriberService.unregister(subRequest.getIsdn(), Integer.valueOf(subRequest.getProductid()));
+		}
 		
 		ResponseDto resp = new ResponseDto();
 		resp.setDescription("Success");

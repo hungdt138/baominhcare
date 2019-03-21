@@ -17,11 +17,11 @@ import com.baominh.sdp.entity.Smsuser;
 public interface VNMSDPService {
 	MTResponseDto sendSDPMT(MTRequestDto mtRequest);
 	
-	boolean sendSMS(String isdn, Integer serviceId);
+	boolean sendSMS(String isdn, Integer serviceId, String moId, String content, Integer productId, String serviceAddress);
 
-	void sendSMSDaily(Integer serviceId);
+	void sendSMSDaily();
 
-	void getContentDaily();
+	void getContentDaily(Integer serviceId);
 
 	void prepareForSendMT();
 }

@@ -12,11 +12,11 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 //@EnableAspectJAutoProxy
 @SpringBootApplication
 @EnableAutoConfiguration
-@EnableScheduling
 @EnableTransactionManagement
 @EntityScan(basePackages = "com.baominh.sdp.entity")
-@EnableJpaRepositories(basePackages = "com.baominh.sdp.repositoty.jpa")
+@EnableJpaRepositories(basePackages = "com.baominh.sdp.repository.jpa")
 @ComponentScan(basePackages = { "com.baominh.sdp" })
+@EnableScheduling
 public class SdpApplication {
 
 	public static void main(String[] args) {

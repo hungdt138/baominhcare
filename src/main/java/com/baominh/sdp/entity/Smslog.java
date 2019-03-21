@@ -25,13 +25,14 @@ public class Smslog implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
 
 	private String content;
 
 	private String date;
-
+	
+	@Column(name = "`from`")
 	private String from;
 
 	@Column(name = "retry_number")
@@ -39,8 +40,10 @@ public class Smslog implements Serializable {
 
 	private Integer serviceID;
 
+	@Column(name = "`status`")
 	private String status;
 
+	@Column(name = "`to`")
 	private String to;
 
 	private String type;

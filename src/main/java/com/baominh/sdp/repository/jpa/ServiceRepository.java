@@ -18,9 +18,9 @@ import java.util.List;
  */
 @Repository
 public interface ServiceRepository extends JpaRepository<ServiceEntity, Integer> {
-    @Query(value = "SELECT * FROM SERVICE WHERE ENABLE = 1", nativeQuery = true)
+    @Query(value = "SELECT * FROM SERVICES WHERE ENABLE = 1", nativeQuery = true)
     List<ServiceEntity> getServiceEntityByEnable();
 
-    @Query(value = "SELECT * FROM SERVICE WHERE SDPPRODUCTID = :productId AND ENABLE = 1", nativeQuery = true)
+    @Query(value = "SELECT * FROM SERVICES WHERE SDP_PRODUCT_ID = :productId AND ENABLE = 1", nativeQuery = true)
     ServiceEntity getServiceBySdpProductId(@Param("productId") Integer productId);
 }

@@ -18,7 +18,7 @@ import java.util.List;
  */
 @Repository
 public interface ContentRepository extends JpaRepository<Content, Integer> {
-    @Query(value = "SELECT * FROM CONTENT WHERE SERVICEID = :serviceId AND DATE(FROM_UNIXTIME(SEND_DATE)) = CURDATE() AND IS_SEND = 0 ORDER BY DATE(FROM_UNIXTIME(SEND_DATE)) DESC  LIMIT 1", nativeQuery = true)
+    @Query(value = "SELECT * FROM CONTENT WHERE SERVICEID = :serviceId AND IS_SEND = 0 ORDER BY DATE(FROM_UNIXTIME(SEND_DATE)) DESC  LIMIT 1", nativeQuery = true)
     Content getContentByServiceId(@Param("serviceId") Integer serviceId);
 
     @Query(value = "SELECT * FROM CONTENT WHERE SERVICEID = :serviceId ORDER BY DATE(FROM_UNIXTIME(SEND_DATE)) DESC  LIMIT 1", nativeQuery = true)

@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
  */
 @Entity
 @Table(name = "services")
-@NamedQuery(name = "Service.findAll", query = "SELECT s FROM Service s")
+@NamedQuery(name = "ServiceEntity.findAll", query = "SELECT s FROM ServiceEntity s")
 @Data
 @Builder
 @AllArgsConstructor
@@ -26,7 +26,7 @@ public class ServiceEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
 
 	private Integer chargingID;

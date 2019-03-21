@@ -1,7 +1,7 @@
 package com.baominh.sdp.quartz;
 
 import com.baominh.sdp.config.AutoWiringSpringBeanJobFactory;
-import com.baominh.sdp.quartz.job.SendMTDailyJob;
+import com.baominh.sdp.quartz.job.GetMTJob;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.slf4j.Logger;
@@ -62,7 +62,7 @@ public class QrtzScheduler {
     @Bean
     public JobDetail jobDetail() {
 
-        return newJob().ofType(SendMTDailyJob.class).storeDurably().withIdentity(JobKey.jobKey("Qrtz_Job_Detail")).withDescription("Invoke SendMTDaily Job service...").build();
+        return newJob().ofType(GetMTJob.class).storeDurably().withIdentity(JobKey.jobKey("Qrtz_Job_Detail")).withDescription("Invoke SendMTDaily Job service...").build();
     }
 
     @Bean

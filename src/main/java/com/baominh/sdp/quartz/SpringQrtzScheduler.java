@@ -1,7 +1,7 @@
 package com.baominh.sdp.quartz;
 
 import com.baominh.sdp.config.AutoWiringSpringBeanJobFactory;
-import com.baominh.sdp.quartz.job.SendMTDailyJob;
+import com.baominh.sdp.quartz.job.GetMTJob;
 import org.quartz.JobDetail;
 import org.quartz.SimpleTrigger;
 import org.quartz.Trigger;
@@ -60,7 +60,7 @@ public class SpringQrtzScheduler {
     public JobDetailFactoryBean jobDetail() {
 
         JobDetailFactoryBean jobDetailFactory = new JobDetailFactoryBean();
-        jobDetailFactory.setJobClass(SendMTDailyJob.class);
+        jobDetailFactory.setJobClass(GetMTJob.class);
         jobDetailFactory.setName("Qrtz_Job_Detail");
         jobDetailFactory.setDescription("Invoke SendMTDailyJob service...");
         jobDetailFactory.setDurability(true);
