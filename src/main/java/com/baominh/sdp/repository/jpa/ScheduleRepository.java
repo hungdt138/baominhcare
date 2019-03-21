@@ -3,6 +3,7 @@
  */
 package com.baominh.sdp.repository.jpa;
 
+import com.baominh.sdp.entity.Schedule;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,6 +12,6 @@ import org.springframework.stereotype.Repository;
  *
  */
 @Repository
-public interface ScheduleRepository extends JpaRepository<ScheduleRepository, Integer> {
+public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
 
 }

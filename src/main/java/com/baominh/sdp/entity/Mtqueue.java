@@ -31,11 +31,8 @@ public class Mtqueue implements Serializable {
     @Column(name = "content")
     private String content;
 
-    @Column(name = "productId")
-    private Integer productId;
-
-    @Column(name = "categoryId")
-    private Integer categoryId;
+    @Column(name = "serviceId")
+    private Integer serviceId;
 
     @Column(name = "description")
     private String description;

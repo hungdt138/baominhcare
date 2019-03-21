@@ -19,4 +19,7 @@ public interface SmsuserRepository extends JpaRepository<Smsuser, Integer> {
 
     @Query(value = "SELECT * FROM smsuser WHERE SERVICEID = :serviceId AND ACTIVE = 1 ", nativeQuery = true)
     Smsuser getSubsriberByServiceId(@Param("serviceId") Integer serviceId);
+
+    @Query(value = "SELECT * FROM smsuser WHERE SERVICEID = :serviceId AND phone = :isdn AND ACTIVE = 1 ", nativeQuery = true)
+    Smsuser getSubscriberByIsdn(@Param("serviceId") Integer serviceId, @Param("isdn") String isdn);
 }
