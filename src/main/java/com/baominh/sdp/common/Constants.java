@@ -19,4 +19,9 @@ public class Constants {
 		public static final String SUCCESS = "0";
 		public static final String ERROR = "1";
 	}
+
+	public interface SMS_TYPE {
+		public static final String MT="MT";
+		public static final String MO="MO";
+	}
 }

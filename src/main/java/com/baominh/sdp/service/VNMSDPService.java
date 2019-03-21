@@ -18,4 +18,8 @@ public interface VNMSDPService {
 	MTResponseDto sendSDPMT(MTRequestDto mtRequest);
 	
 	boolean sendSMS(ContentDto contentDto, SmsuserDto smsUserDto);
+
+	void sendSMSDaily();
+
+	void getContentDaily();
 }
