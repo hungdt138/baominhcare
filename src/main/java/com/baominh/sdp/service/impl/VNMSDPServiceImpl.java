@@ -142,27 +142,30 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 
 	@Override
 	@Transactional
-	public boolean sendSMS(String isdn, Integer serviceId, String moId, String content, Integer productId,
-			String serviceAddress) {
+	public boolean sendSMS(String isdn, Integer serviceId) {
 		log.info("Entering to send SMS SDP");
 		SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
 
 		ServiceEntity service = serviceRepository.findById(serviceId).orElse(null);
+		Content content = contentRepository.getLatestContentByServiceId(serviceId);
+		ContentDto contentDto = new ContentDto();
+		BeanUtils.copyProperties(content, contentDto);
 
+		log.info("Send SMS: {}", LoggingUtils.objToStringIgnoreEx(contentDto));
 		if (service != null) {
 			if (content != null) {
-				log.info("Send SMS: {}, serviceAddress: {}, Content: {}", isdn, serviceAddress, content);
+				log.info("Send SMS: {}, Content: {}", isdn, contentDto.getContent());
 				String transId = sdf.format(new Date());
 				MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
 						.time(sdf.format(new Date())).isdn(isdn).serviceAddress(serviceAddress)
 						.categoryId(service.getSdpCategoryId().toString())
-						.productId(service.getSdpProductId().toString()).moid(moId).message(content).unicode(1).flash(0)
-						.href("").build();
+						.productId(service.getSdpProductId().toString()).moid("0").message(contentDto.getContent())
+						.unicode(1).flash(0).href("").build();
 
 				MTResponseDto resp = sendSDPMT(mtReq);
-				Smslog smslog = Smslog.builder().content(content).date(DateHelper.dateToUnixTime(new Date()))
-						.from(serviceAddress).to("+" + isdn).retryNumber(0).serviceID(serviceId)
-						.type(Constants.SMS_TYPE.MT).build();
+				Smslog smslog = Smslog.builder().content(contentDto.getContent())
+						.date(DateHelper.dateToUnixTime(new Date())).from(serviceAddress).to("+" + isdn).retryNumber(0)
+						.serviceID(contentDto.getServiceID()).type(Constants.SMS_TYPE.MT).build();
 				if (resp.getStatus() == 0) {
 					smslog.setStatus("success");
 				} else {
@@ -179,7 +182,7 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 			}
 
 		} else {
-			log.info("ServiceId {} not exist!!", serviceId);
+			log.info("ServiceId {} not exist!!", contentDto.getServiceID());
 			return false;
 		}
 	}
@@ -192,44 +195,44 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 		List<Mtqueue> lstContent = mtqueueRepository.getAllContentInQueue();
 		SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
 		Integer i = 0;
+		
+			if (lstContent.size() > 0) {
+				for (Mtqueue content : lstContent) {
+					ServiceEntity service = serviceRepository.findById(content.getServiceId()).orElse(null);
+					Smsuser smsuser = smsUserRepository.getSubscriberByIsdn(service.getId(), content.getIsdn());
+					if (smsuser != null) {
+						String transId = sdf.format(new Date()) + i;
+						MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username)
+								.password(password).time(sdf.format(new Date())).isdn(content.getIsdn())
+								.serviceAddress(serviceAddress).categoryId(service.getSdpCategoryId().toString())
+								.productId(service.getSdpProductId().toString()).moid("0").message(content.getContent())
+								.unicode(1).flash(0).href("").build();
 
-		if (lstContent.size() > 0) {
-			for (Mtqueue content : lstContent) {
-				ServiceEntity service = serviceRepository.findById(content.getServiceId()).orElse(null);
-				Smsuser smsuser = smsUserRepository.getSubscriberByIsdn(service.getId(), content.getIsdn());
-				if (smsuser != null) {
-					String transId = sdf.format(new Date()) + i;
-					MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
-							.time(sdf.format(new Date())).isdn(content.getIsdn()).serviceAddress(serviceAddress)
-							.categoryId(service.getSdpCategoryId().toString())
-							.productId(service.getSdpProductId().toString()).moid("0").message(content.getContent())
-							.unicode(1).flash(0).href("").build();
+						log.info("{} --> Send SMS Request - {} ", transId, LoggingUtils.objToStringIgnoreEx(mtReq));
+						MTResponseDto resp = sendSDPMT(mtReq);
+						log.info("{} --> Send SMS Response - {} ", transId, LoggingUtils.objToStringIgnoreEx(resp));
+						Smslog smslog = Smslog.builder().content(content.getContent())
+								.date(DateHelper.dateToUnixTime(new Date())).from(serviceAddress).to(content.getIsdn())
+								.retryNumber(0).serviceID(content.getServiceId()).type(Constants.SMS_TYPE.MT).build();
+						if (resp.getStatus() == 0) {
+							smslog.setStatus("success");
+							content.setStatus(0);
+							mtqueueRepository.save(content);
+						} else {
+							smslog.setStatus("fail");
+						}
 
-					log.info("{} --> Send SMS Request - {} ", transId, LoggingUtils.objToStringIgnoreEx(mtReq));
-					MTResponseDto resp = sendSDPMT(mtReq);
-					log.info("{} --> Send SMS Response - {} ", transId, LoggingUtils.objToStringIgnoreEx(resp));
-					Smslog smslog = Smslog.builder().content(content.getContent())
-							.date(DateHelper.dateToUnixTime(new Date())).from(serviceAddress).to(content.getIsdn())
-							.retryNumber(0).serviceID(content.getServiceId()).type(Constants.SMS_TYPE.MT).build();
-					if (resp.getStatus() == 0) {
-						smslog.setStatus("success");
-						content.setStatus(0);
-						mtqueueRepository.save(content);
+						smsLogRepository.save(smslog);
 					} else {
-						smslog.setStatus("fail");
+						log.info("Subscriber does not exist or inactive.");
 					}
 
-					smsLogRepository.save(smslog);
-				} else {
-					log.info("Subscriber does not exist or inactive.");
+					i++;
 				}
-
-				i++;
-			}
-		} else {
-			log.info("No content for send.");
-
-		}
+			} else {
+				log.info("No content for send.");
+				
+			} 
 
 	}
 
@@ -258,7 +261,7 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 		log.info("Insert {} record MT to Database.", lstQueue.size());
 
 		log.info("lstQueue: {}", LoggingUtils.objToStringIgnoreEx(lstQueue));
-
+		
 		if (lstQueue.size() > 0) {
 			mtqueueRepository.saveAll(lstQueue);
 		}
@@ -297,7 +300,7 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 							if (hh.intValue() == hhDb.intValue() && mm.intValue() == mmDb.intValue()) {
 								getContentDaily(service.getId());
 							} else {
-								log.info("Waiting to send MT... {} - {}", service.getId(), service.getSyntaxRegister());
+								log.info("Waiting to send MT... {} - {}",service.getId(), service.getSyntaxRegister());
 							}
 						} else if (schedule.getHour() != null && schedule.getDay() != null
 								&& schedule.getWeek() == null) {
