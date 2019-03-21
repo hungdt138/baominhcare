@@ -168,7 +168,7 @@ public class VNMSDPServiceImpl implements VNMSDPService {
     @Override
     @Transactional
     public void sendSMSDaily() {
-
+        
     }
 
     @Override
