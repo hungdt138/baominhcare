@@ -24,4 +24,6 @@ public interface VNMSDPService {
 	void getContentDaily(Integer serviceId);
 
 	void prepareForSendMT();
+	
+	void test();
 }

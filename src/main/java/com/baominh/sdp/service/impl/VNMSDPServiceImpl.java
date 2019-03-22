@@ -11,37 +11,42 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 import javax.transaction.Transactional;
 
-import com.baominh.sdp.common.Constants;
-import com.baominh.sdp.entity.*;
-import com.baominh.sdp.repository.jpa.*;
-import com.baominh.sdp.utils.DateHelper;
-
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicNameValuePair;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.baominh.sdp.common.Constants;
 import com.baominh.sdp.dto.ContentDto;
 import com.baominh.sdp.dto.MTRequestDto;
 import com.baominh.sdp.dto.MTResponseDto;
-import com.baominh.sdp.dto.ServiceDto;
-import com.baominh.sdp.dto.SmsuserDto;
+import com.baominh.sdp.entity.Content;
+import com.baominh.sdp.entity.Mtqueue;
+import com.baominh.sdp.entity.Schedule;
+import com.baominh.sdp.entity.Schedulelist;
+import com.baominh.sdp.entity.ServiceEntity;
+import com.baominh.sdp.entity.Smslog;
+import com.baominh.sdp.entity.Smsuser;
 import com.baominh.sdp.exception.BMException;
 import com.baominh.sdp.exception.ErrorCode;
+import com.baominh.sdp.repository.jpa.ContentRepository;
+import com.baominh.sdp.repository.jpa.MtqueueRepository;
+import com.baominh.sdp.repository.jpa.ScheduleRepository;
+import com.baominh.sdp.repository.jpa.SchedulelistRepository;
+import com.baominh.sdp.repository.jpa.ServiceRepository;
+import com.baominh.sdp.repository.jpa.SmslogRepository;
+import com.baominh.sdp.repository.jpa.SmsuserRepository;
 import com.baominh.sdp.service.VNMSDPService;
+import com.baominh.sdp.utils.DateHelper;
 import com.baominh.sdp.utils.LoggingUtils;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -332,6 +337,13 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 			}
 
 		}
+	}
+
+	@Override
+	@Scheduled(fixedRate = 1000)
+	public void test() {
+		log.info("Do Tien Hung");
+		
 	}
 
 }
