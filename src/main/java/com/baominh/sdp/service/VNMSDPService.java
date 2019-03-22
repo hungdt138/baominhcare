@@ -25,5 +25,5 @@ public interface VNMSDPService {
 
 	void prepareForSendMT();
 	
-	void test();
+//	void test();
 }

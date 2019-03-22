@@ -194,6 +194,8 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 
 	@Override
 	@Transactional
+	@Scheduled(fixedDelayString = "${sendmt.fixedDelay.in.milliseconds}")
+	@Scheduled(fixedDelayString = "${sendmt.fixedRate.in.milliseconds}")
 	public void sendSMSDaily() {
 		log.info("Start send MT daily...");
 		// Get All content
@@ -278,8 +280,10 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 	}
 
 	@Override
+	@Scheduled(fixedDelayString = "${preparemt.fixedDelay.in.milliseconds}")
+	@Scheduled(fixedDelayString = "${preparemt.fixedRate.in.milliseconds}")
 	public void prepareForSendMT() {
-		log.info("Prepare to sendMT");
+		log.info("Prepare content to sendMT");
 
 		List<ServiceEntity> lstService = serviceRepository.getServiceEntityByEnable();
 
@@ -304,26 +308,20 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 
 							if (hh.intValue() == hhDb.intValue() && mm.intValue() == mmDb.intValue()) {
 								getContentDaily(service.getId());
-							} else {
-								log.info("Waiting to send MT... {} - {}",service.getId(), service.getSyntaxRegister());
-							}
+							} 
 						} else if (schedule.getHour() != null && schedule.getDay() != null
 								&& schedule.getWeek() == null) {
 							if (hhDb.intValue() == hh.intValue() && mm.intValue() == mmDb.intValue()
 									&& day.intValue() == schedule.getDay()) {
 								getContentDaily(service.getId());
-							} else {
-								log.info("Waiting to send MT...{} - {}\",service.getId(), service.getSyntaxRegister()");
-							}
+							} 
 						} else if (schedule.getHour() != null && schedule.getDay() != null
 								&& schedule.getWeek() != null) {
 							if (hhDb.intValue() == hh.intValue() && mm.intValue() == mmDb.intValue()
 									&& day.intValue() == schedule.getDay().intValue()
 									&& week.intValue() == schedule.getWeek().intValue()) {
 								getContentDaily(service.getId());
-							} else {
-								log.info("Waiting to send MT...{} - {}\",service.getId(), service.getSyntaxRegister()");
-							}
+							} 
 						} else {
 							log.info("No schedule for this service -> {}", service.getId());
 						}
@@ -339,11 +337,13 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 		}
 	}
 
-	@Override
-	@Scheduled(fixedRate = 1000)
-	public void test() {
-		log.info("Do Tien Hung");
-		
-	}
+//	@Override
+//	@Scheduled(fixedDelay = 3000, initialDelay = 1000)
+//	public void test() {
+//		long now = System.currentTimeMillis() / 1000;
+//	    System.out.println(
+//	      "Fixed rate task with one second initial delay - " + now);
+//		
+//	}
 
 }
