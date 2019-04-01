@@ -19,16 +19,17 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.springframework.beans.BeanUtils;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.annotation.RabbitListeners;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.baominh.sdp.common.Constants;
-import com.baominh.sdp.dto.ContentDto;
 import com.baominh.sdp.dto.MTRequestDto;
 import com.baominh.sdp.dto.MTResponseDto;
+import com.baominh.sdp.dto.SendSmsDto;
 import com.baominh.sdp.entity.Content;
 import com.baominh.sdp.entity.Mtqueue;
 import com.baominh.sdp.entity.Schedule;
@@ -98,6 +99,9 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 	@Autowired
 	private SchedulelistRepository schedulelistRepository;
 
+	@Autowired
+	private RabbitMQPublisherImpl rabbitMqPublisherImpl;
+
 	@Override
 	public MTResponseDto sendSDPMT(MTRequestDto mtRequest) {
 		log.info("Call send mt api: {}", sdpurl);
@@ -146,100 +150,84 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 	}
 
 	@Override
-	@Transactional
-	public boolean sendSMS(String isdn, Integer serviceId) {
+	@RabbitListener(queues = "${sdp.rabbitmq.queue.mt}")
+	public boolean sendSMS(SendSmsDto sendSms) {
 		log.info("Entering to send SMS SDP");
 		SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
 
-		ServiceEntity service = serviceRepository.findById(serviceId).orElse(null);
-		Content content = contentRepository.getLatestContentByServiceId(serviceId);
-		ContentDto contentDto = new ContentDto();
-		BeanUtils.copyProperties(content, contentDto);
+		log.info("Send SMS: {}", LoggingUtils.objToStringIgnoreEx(sendSms));
 
-		log.info("Send SMS: {}", LoggingUtils.objToStringIgnoreEx(contentDto));
-		if (service != null) {
-			if (content != null) {
-				log.info("Send SMS: {}, Content: {}", isdn, contentDto.getContent());
-				String transId = sdf.format(new Date());
-				MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
-						.time(sdf.format(new Date())).isdn(isdn).serviceAddress(serviceAddress)
-						.categoryId(service.getSdpCategoryId().toString())
-						.productId(service.getSdpProductId().toString()).moid("0").message(contentDto.getContent())
-						.unicode(1).flash(0).href("").build();
-
-				MTResponseDto resp = sendSDPMT(mtReq);
-				Smslog smslog = Smslog.builder().content(contentDto.getContent())
-						.date(DateHelper.dateToUnixTime(new Date())).from(serviceAddress).to("+" + isdn).retryNumber(0)
-						.serviceID(contentDto.getServiceID()).type(Constants.SMS_TYPE.MT).build();
-				if (resp.getStatus() == 0) {
-					smslog.setStatus("success");
-				} else {
-					smslog.setStatus("fail");
-				}
-
-				log.info("Insert log: {}", LoggingUtils.objToStringIgnoreEx(smslog));
-
-				smsLogRepository.save(smslog);
-				return true;
-			} else {
-				log.info("No content setup for this service {} - {}!!!!", serviceId, service.getName());
-				return false;
-			}
-
-		} else {
-			log.info("ServiceId {} not exist!!", contentDto.getServiceID());
-			return false;
+		ServiceEntity service = serviceRepository.findById(sendSms.getServiceId()).orElse(null);
+		
+		String productId = "0";
+		
+		if(service == null) {
+			productId = "2522";
 		}
+
+		String transId = sdf.format(new Date());
+		MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
+				.time(sdf.format(new Date())).isdn(sendSms.getIsdn()).serviceAddress(sendSms.getServiceAddress())
+				.categoryId("0").productId(productId)
+				.moid(sendSms.getMoId()).message(sendSms.getContent()).unicode(1).flash(sendSms.getFlash())
+				.href(sendSms.getHref()).build();
+
+		MTResponseDto resp = sendSDPMT(mtReq);
+		
+//		MTResponseDto resp = null;
+		Smslog smslog = Smslog.builder().content(sendSms.getContent()).date(DateHelper.dateToUnixTime(new Date()))
+				.from(sendSms.getServiceAddress()).to("+" + sendSms.getIsdn()).retryNumber(0)
+				.serviceID(sendSms.getServiceId()).type(Constants.SMS_TYPE.MT).build();
+		if (resp.getStatus() == 0) {
+			smslog.setStatus("success");
+			smsLogRepository.save(smslog);
+		} else {
+			smslog.setStatus("fail");
+			smsLogRepository.save(smslog);
+			throw new BMException(null, ErrorCode.SEND_MT_ERROR,
+					new StringBuilder().append("Status: ").append(resp.getStatus()).append(" | Message: ")
+							.append(resp.getDescription()).append(" | TransId: ").append(resp.getTransId()));
+		}
+
+		log.info("Insert log: {}", LoggingUtils.objToStringIgnoreEx(smslog));
+
+		return true;
+
 	}
 
 	@Override
 	@Transactional
-	@Scheduled(fixedDelayString = "${sendmt.fixedDelay.in.milliseconds}")
-	@Scheduled(fixedDelayString = "${sendmt.fixedRate.in.milliseconds}")
-	public void sendSMSDaily() {
+	@RabbitListener(queues = "${sdp.rabbitmq.queue.mtdaily}")
+	public void sendSMSDaily(SendSmsDto sendSms) {
 		log.info("Start send MT daily...");
-		// Get All content
-		List<Mtqueue> lstContent = mtqueueRepository.getAllContentInQueue();
+
 		SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
-		Integer i = 0;
-		
-			if (lstContent.size() > 0) {
-				for (Mtqueue content : lstContent) {
-					ServiceEntity service = serviceRepository.findById(content.getServiceId()).orElse(null);
-					Smsuser smsuser = smsUserRepository.getSubscriberByIsdn(service.getId(), content.getIsdn());
-					if (smsuser != null) {
-						String transId = sdf.format(new Date()) + i;
-						MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username)
-								.password(password).time(sdf.format(new Date())).isdn(content.getIsdn())
-								.serviceAddress(serviceAddress).categoryId(service.getSdpCategoryId().toString())
-								.productId(service.getSdpProductId().toString()).moid("0").message(content.getContent())
-								.unicode(1).flash(0).href("").build();
 
-						log.info("{} --> Send SMS Request - {} ", transId, LoggingUtils.objToStringIgnoreEx(mtReq));
-						MTResponseDto resp = sendSDPMT(mtReq);
-						log.info("{} --> Send SMS Response - {} ", transId, LoggingUtils.objToStringIgnoreEx(resp));
-						Smslog smslog = Smslog.builder().content(content.getContent())
-								.date(DateHelper.dateToUnixTime(new Date())).from(serviceAddress).to(content.getIsdn())
-								.retryNumber(0).serviceID(content.getServiceId()).type(Constants.SMS_TYPE.MT).build();
-						if (resp.getStatus() == 0) {
-							smslog.setStatus("success");
-							content.setStatus(0);
-							mtqueueRepository.save(content);
-						} else {
-							smslog.setStatus("fail");
-						}
+		ServiceEntity service = serviceRepository.findById(sendSms.getServiceId()).orElse(null);
+		Smsuser smsuser = smsUserRepository.getSubscriberByIsdn(service.getId(), sendSms.getIsdn());
+		if (smsuser != null) {
+			String transId = sdf.format(new Date());
+			MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
+					.time(sdf.format(new Date())).isdn(sendSms.getIsdn()).serviceAddress(sendSms.getServiceAddress())
+					.categoryId("0").productId(service.getSdpProductId().toString())
+					.moid("0").message(sendSms.getContent()).unicode(1).flash(0).href("").build();
 
-						smsLogRepository.save(smslog);
-					} else {
-						log.info("Subscriber does not exist or inactive.");
-					}
-
-					i++;
-				}
+			log.info("{} --> Send SMS Request - {} ", transId, LoggingUtils.objToStringIgnoreEx(mtReq));
+			MTResponseDto resp = sendSDPMT(mtReq);
+			log.info("{} --> Send SMS Response - {} ", transId, LoggingUtils.objToStringIgnoreEx(resp));
+			Smslog smslog = Smslog.builder().content(sendSms.getContent()).date(DateHelper.dateToUnixTime(new Date()))
+					.from(serviceAddress).to(sendSms.getIsdn()).retryNumber(0).serviceID(sendSms.getServiceId())
+					.type(Constants.SMS_TYPE.MT).build();
+			if (resp.getStatus() == 0) {
+				smslog.setStatus("success");
 			} else {
-				log.info("No content for send.");
-				
-			} 
+				smslog.setStatus("fail");
+			}
+
+			smsLogRepository.save(smslog);
+		} else {
+			log.info("Subscriber does not exist or inactive.");
+		}
 
 	}
 
@@ -248,30 +236,33 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 	public void getContentDaily(Integer serviceId) {
 		log.info("Get Content Daily");
 
-		List<Mtqueue> lstQueue = new ArrayList<>();
+		
 
+		SendSmsDto sendSmsDto = null;
 		Content content = contentRepository.getContentByServiceId(serviceId);
 		if (content != null) {
 			List<Smsuser> lstUser = smsUserRepository.getSubsriberByServiceId(serviceId);
 			log.info("lstUser: {}", LoggingUtils.objToStringIgnoreEx(lstUser));
+
 			for (Smsuser user : lstUser) {
-				Mtqueue mtqueue = Mtqueue.builder().isdn(user.getPhone()).serviceAddress(serviceAddress)
-						.content(content.getContent()).serviceId(serviceId).description("MT Daily")
-						.createdDate(new Date()).status(1).build();
-				lstQueue.add(mtqueue);
+				sendSmsDto = new SendSmsDto();
+				sendSmsDto.setContent(content.getContent());
+				sendSmsDto.setFlash(0);
+				sendSmsDto.setHref("");
+				sendSmsDto.setIsdn(user.getPhone());
+				sendSmsDto.setMoId("0");
+				sendSmsDto.setServiceAddress("568");
+				sendSmsDto.setServiceId(serviceId);
+				sendSmsDto.setUnicode(1);
+
+				// Send to queue
+				rabbitMqPublisherImpl.putToSMSDailyQueue(sendSmsDto);
 			}
 
 		} else {
 			log.info("No content set for service: {}.", serviceId);
 		}
 
-		log.info("Insert {} record MT to Database.", lstQueue.size());
-
-		log.info("lstQueue: {}", LoggingUtils.objToStringIgnoreEx(lstQueue));
-		
-		if (lstQueue.size() > 0) {
-			mtqueueRepository.saveAll(lstQueue);
-		}
 		if (content != null) {
 			content.setIsSend(1);
 			contentRepository.save(content);
@@ -308,20 +299,20 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 
 							if (hh.intValue() == hhDb.intValue() && mm.intValue() == mmDb.intValue()) {
 								getContentDaily(service.getId());
-							} 
+							}
 						} else if (schedule.getHour() != null && schedule.getDay() != null
 								&& schedule.getWeek() == null) {
 							if (hhDb.intValue() == hh.intValue() && mm.intValue() == mmDb.intValue()
 									&& day.intValue() == schedule.getDay()) {
 								getContentDaily(service.getId());
-							} 
+							}
 						} else if (schedule.getHour() != null && schedule.getDay() != null
 								&& schedule.getWeek() != null) {
 							if (hhDb.intValue() == hh.intValue() && mm.intValue() == mmDb.intValue()
 									&& day.intValue() == schedule.getDay().intValue()
 									&& week.intValue() == schedule.getWeek().intValue()) {
 								getContentDaily(service.getId());
-							} 
+							}
 						} else {
 							log.info("No schedule for this service -> {}", service.getId());
 						}

@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
  * 
  */
 @Entity
+@Table(name="charging")
 @NamedQuery(name="Charging.findAll", query="SELECT c FROM Charging c")
 @Data
 @Builder

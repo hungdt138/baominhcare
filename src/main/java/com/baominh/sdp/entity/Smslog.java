@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
  * 
  */
 @Entity
+@Table(name="smslog")
 @NamedQuery(name = "Smslog.findAll", query = "SELECT s FROM Smslog s")
 @Data
 @Builder

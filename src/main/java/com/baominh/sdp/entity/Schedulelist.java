@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
  * 
  */
 @Entity
+@Table(name="schedulelist")
 @NamedQuery(name = "Schedulelist.findAll", query = "SELECT s FROM Schedulelist s")
 @Data
 @Builder

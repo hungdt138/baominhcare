@@ -10,6 +10,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 @Entity
+@Table(name="mtqueue")
 @NamedQuery(name="Mtqueue.findAll", query="SELECT m from Mtqueue m")
 @Data
 @Builder

@@ -25,5 +25,13 @@ public class Constants {
 		public static final String MO="MO";
 	}
 	
+	public final static String sendmt = "sendmt";
 	
+	public final static String sendmt_daily = "sendmt_daily";
+	
+	public interface SDP_MO {
+		public static final String KTDV = "KTDV";
+		public static final String GIA = "GIA";
+		public static final String HDSD = "HDSD";
+	}
 }
