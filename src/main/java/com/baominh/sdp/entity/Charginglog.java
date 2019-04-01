@@ -27,7 +27,7 @@ public class Charginglog implements Serializable {
 
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
-	private int id;
+	private Integer id;
 
 	@Column(name="charge_time")
 	private Integer chargeTime;

@@ -18,7 +18,7 @@ import com.baominh.sdp.entity.Smsuser;
 public interface VNMSDPService {
 	MTResponseDto sendSDPMT(MTRequestDto mtRequest);
 	
-	boolean sendSMS(SendSmsDto sendSms);
+	void sendSMS(SendSmsDto sendSms);
 
 	void sendSMSDaily(SendSmsDto sendSms);
 

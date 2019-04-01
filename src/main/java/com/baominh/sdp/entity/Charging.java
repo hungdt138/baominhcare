@@ -27,15 +27,15 @@ public class Charging implements Serializable {
 
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
-	private int id;
+	private Integer id;
 
-	private int freetime;
+	private Integer freetime;
 
 	private String hour;
 
 	private String name;
 
-	private int price;
+	private Integer price;
 
 	private String type;
 

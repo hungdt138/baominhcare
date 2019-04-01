@@ -151,29 +151,28 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 
 	@Override
 	@RabbitListener(queues = "${sdp.rabbitmq.queue.mt}")
-	public boolean sendSMS(SendSmsDto sendSms) {
+	public void sendSMS(SendSmsDto sendSms) {
 		log.info("Entering to send SMS SDP");
 		SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyyHHmmss");
 
 		log.info("Send SMS: {}", LoggingUtils.objToStringIgnoreEx(sendSms));
 
 		ServiceEntity service = serviceRepository.findById(sendSms.getServiceId()).orElse(null);
-		
+
 		String productId = "0";
-		
-		if(service == null) {
+
+		if (service == null) {
 			productId = "2522";
 		}
 
 		String transId = sdf.format(new Date());
 		MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
 				.time(sdf.format(new Date())).isdn(sendSms.getIsdn()).serviceAddress(sendSms.getServiceAddress())
-				.categoryId("0").productId(productId)
-				.moid(sendSms.getMoId()).message(sendSms.getContent()).unicode(1).flash(sendSms.getFlash())
-				.href(sendSms.getHref()).build();
+				.categoryId("0").productId(productId).moid(sendSms.getMoId()).message(sendSms.getContent()).unicode(1)
+				.flash(sendSms.getFlash()).href(sendSms.getHref()).build();
 
 		MTResponseDto resp = sendSDPMT(mtReq);
-		
+
 //		MTResponseDto resp = null;
 		Smslog smslog = Smslog.builder().content(sendSms.getContent()).date(DateHelper.dateToUnixTime(new Date()))
 				.from(sendSms.getServiceAddress()).to("+" + sendSms.getIsdn()).retryNumber(0)
@@ -191,8 +190,6 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 
 		log.info("Insert log: {}", LoggingUtils.objToStringIgnoreEx(smslog));
 
-		return true;
-
 	}
 
 	@Override
@@ -209,8 +206,8 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 			String transId = sdf.format(new Date());
 			MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
 					.time(sdf.format(new Date())).isdn(sendSms.getIsdn()).serviceAddress(sendSms.getServiceAddress())
-					.categoryId("0").productId(service.getSdpProductId().toString())
-					.moid("0").message(sendSms.getContent()).unicode(1).flash(0).href("").build();
+					.categoryId("0").productId(service.getSdpProductId().toString()).moid("0")
+					.message(sendSms.getContent()).unicode(1).flash(0).href("").build();
 
 			log.info("{} --> Send SMS Request - {} ", transId, LoggingUtils.objToStringIgnoreEx(mtReq));
 			MTResponseDto resp = sendSDPMT(mtReq);
@@ -235,8 +232,6 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 	@Transactional
 	public void getContentDaily(Integer serviceId) {
 		log.info("Get Content Daily");
-
-		
 
 		SendSmsDto sendSmsDto = null;
 		Content content = contentRepository.getContentByServiceId(serviceId);
