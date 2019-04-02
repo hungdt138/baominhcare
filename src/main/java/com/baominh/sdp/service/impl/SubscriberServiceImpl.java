@@ -18,6 +18,7 @@ import com.baominh.sdp.service.SubscriberService;
 import com.baominh.sdp.service.VNMSDPService;
 import com.baominh.sdp.utils.DateHelper;
 import com.baominh.sdp.utils.LoggingUtils;
+import com.baominh.sdp.utils.StringUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -147,9 +148,7 @@ public class SubscriberServiceImpl implements SubscriberService {
 			for (int i = 0; i < lstSub.size(); i++) {
 				ServiceEntity service = serviceRepository.findById(lstSub.get(i).getServiceID()).orElse(null);
 				Charging charging = chargingRepository.findById(service.getChargingID()).orElse(null);
-				log.info(LoggingUtils.objToStringIgnoreEx(service));
-				log.info(LoggingUtils.objToStringIgnoreEx(charging));
-				ktdv_success = ktdv_success.replace("$name", service.getName()).replace("$date", sdf.format(DateHelper.unixTimeToDate(lstSub.get(i).getRegisterDate())))
+				ktdv_success = ktdv_success.replace("$name", StringUtils.removeAccent(service.getName())).replace("$date", sdf.format(DateHelper.unixTimeToDate(lstSub.get(i).getRegisterDate())))
 						.replace("$unreg", service.getSyntaxUnregister()).replace("$type", lstSub.get(i).getRegisterType()).replace("$price", String.valueOf(charging.getPrice()));
 				
 				log.info("MT: {}", ktdv_success);

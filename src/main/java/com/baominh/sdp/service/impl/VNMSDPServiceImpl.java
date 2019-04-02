@@ -7,7 +7,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -20,7 +19,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.annotation.RabbitListeners;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,7 +29,6 @@ import com.baominh.sdp.dto.MTRequestDto;
 import com.baominh.sdp.dto.MTResponseDto;
 import com.baominh.sdp.dto.SendSmsDto;
 import com.baominh.sdp.entity.Content;
-import com.baominh.sdp.entity.Mtqueue;
 import com.baominh.sdp.entity.Schedule;
 import com.baominh.sdp.entity.Schedulelist;
 import com.baominh.sdp.entity.ServiceEntity;
@@ -168,7 +165,7 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 		String transId = sdf.format(new Date());
 		MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
 				.time(sdf.format(new Date())).isdn(sendSms.getIsdn()).serviceAddress(sendSms.getServiceAddress())
-				.categoryId("0").productId(productId).moid(sendSms.getMoId()).message(sendSms.getContent()).unicode(1)
+				.categoryId("0").productId(productId).moid(sendSms.getMoId()).message(sendSms.getContent()).unicode(sendSms.getUnicode())
 				.flash(sendSms.getFlash()).href(sendSms.getHref()).build();
 
 		MTResponseDto resp = sendSDPMT(mtReq);
@@ -207,7 +204,7 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 			MTRequestDto mtReq = MTRequestDto.builder().transId(transId).username(username).password(password)
 					.time(sdf.format(new Date())).isdn(sendSms.getIsdn()).serviceAddress(sendSms.getServiceAddress())
 					.categoryId("0").productId(service.getSdpProductId().toString()).moid("0")
-					.message(sendSms.getContent()).unicode(1).flash(0).href("").build();
+					.message(sendSms.getContent()).unicode(sendSms.getUnicode()).flash(0).href("").build();
 
 			log.info("{} --> Send SMS Request - {} ", transId, LoggingUtils.objToStringIgnoreEx(mtReq));
 			MTResponseDto resp = sendSDPMT(mtReq);
@@ -248,7 +245,7 @@ public class VNMSDPServiceImpl implements VNMSDPService {
 				sendSmsDto.setMoId("0");
 				sendSmsDto.setServiceAddress("568");
 				sendSmsDto.setServiceId(serviceId);
-				sendSmsDto.setUnicode(1);
+				sendSmsDto.setUnicode(0);
 
 				// Send to queue
 				rabbitMqPublisherImpl.putToSMSDailyQueue(sendSmsDto);

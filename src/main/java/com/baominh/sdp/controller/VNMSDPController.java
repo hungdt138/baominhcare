@@ -123,7 +123,7 @@ public class VNMSDPController {
 
 			for (int i = 0; i < lstSubContentNoti.size(); i++) {
 				sendSms = SendSmsDto.builder().content(lstSubContentNoti.get(i)).flash(0).href("").isdn(isdn).moId(moid)
-						.serviceAddress("568").serviceId(0).unicode(1).build();
+						.serviceAddress("568").serviceId(0).unicode(0).build();
 				rabbitMqPublisherImpl.putToSMSQueue(sendSms);
 
 				logger.info(LoggingUtils.objToStringIgnoreEx(sendSms));
